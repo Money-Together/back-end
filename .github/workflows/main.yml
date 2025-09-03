@@ -1,4 +1,4 @@
-name: Build and Deploy
+name: Deploy to AWS
 
 on:
   push:
@@ -6,40 +6,40 @@ on:
       - main
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Set up JDK
-      uses: actions/setup-java@v4
-      with:
-        distribution: temurin
-        java-version: 21
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
 
-    - name: Build with Gradle
-      run: ./gradlew clean bootJar -x test
+      - name: Build JAR
+        run: ./gradlew clean bootJar -x test
 
-    - name: Copy files to AWS VM
-      uses: appleboy/scp-action@v0.1.7
-      with:
-        host: ${{ secrets.AWS_VM_HOST }}
-        username: ${{ secrets.AWS_VM_USER }}
-        key: ${{ secrets.AWS_SSH_KEY }}
-        port: 22
-        source: build/libs/moneytogether1-0.0.1-SNAPSHOT.jar,docker-compose.yml
-        target: /home/ubuntu/moneytogether/
+      - name: Copy and deploy via SSH
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.AWS_VM_HOST }}
+          username: ${{ secrets.AWS_VM_USER }}
+          key: ${{ secrets.AWS_SSH_KEY }}
+          port: 22
+          script: |
+            cd /home/${{ secrets.AWS_VM_USER }}/moneytogether/
 
-    - name: Run commands on AWS VM
-      uses: appleboy/ssh-action@v0.1.10
-      with:
-        host: ${{ secrets.AWS_VM_HOST }}
-        username: ${{ secrets.AWS_VM_USER }}
-        key: ${{ secrets.AWS_SSH_KEY }}
-        port: 22
-        script: |
-          cd /home/ubuntu/moneytogether/
-          docker compose down
-          docker compose up -d --build
+            # Docker 컨테이너 중지
+            docker compose down || true
+
+            # .env 파일 생성
+            echo "${{ secrets.ENV_FILE }}" > .env
+
+            # Firebase 서비스 키 생성
+            mkdir -p /home/${{ secrets.AWS_VM_USER }}/moneytogether/app/firebase
+            echo "${{ secrets.FIREBASE_KEY }}" > /home/${{ secrets.AWS_VM_USER }}/moneytogether/app/firebase/firebase-service-key.json
+
+            # Docker Compose 빌드 및 실행
+            docker compose up -d --build
