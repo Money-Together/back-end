@@ -32,17 +32,18 @@ jobs:
         run: ls -l build/libs docker-compose.yml
 
       # 5️⃣ JAR 파일 및 docker-compose.yml 복사
-      - name: Copy JAR and docker-compose.yml to AWS VM
+      - name: Copy files to AWS VM
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.AWS_VM_HOST }}
           username: ${{ secrets.AWS_VM_USER }}
           key: ${{ secrets.AWS_SSH_KEY }}
+          port: 22
           source: |
             build/libs/moneytogether1-0.0.1-SNAPSHOT.jar
             docker-compose.yml
           target: /home/ubuntu/moneytogether/
-          overwrite: true   # 기존 파일 덮어쓰기
+
 
       # 6️⃣ ENV 파일 & Firebase 키 서버에 저장
       - name: Upload ENV and Firebase key
