@@ -1,0 +1,68 @@
+name: Deploy to AWS VM
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ 코드 체크아웃
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 2️⃣ JDK 설치
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      # 3️⃣ Gradle 빌드
+      - name: Build with Gradle
+        run: ./gradlew clean bootJar -x test
+
+      # 4️⃣ JAR 이름 고정
+      - name: Rename JAR
+        run: mv build/libs/*.jar build/libs/app.jar
+
+      # 5️⃣ EC2에 배포 파일 전송 (JAR + docker-compose.yml)
+      - name: Copy files to AWS VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.AWS_VM_HOST }}
+          username: ${{ secrets.AWS_VM_USER }}
+          key: ${{ secrets.AWS_SSH_KEY }}
+          source: |
+            build/libs/app.jar
+            docker-compose.yml
+          target: /home/ubuntu/moneytogether/
+
+      # 6️⃣ ENV 파일 & Firebase 키도 서버에 저장
+      - name: Upload ENV and Firebase key
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.AWS_VM_HOST }}
+          username: ${{ secrets.AWS_VM_USER }}
+          key: ${{ secrets.AWS_SSH_KEY }}
+          script: |
+            cd /home/ubuntu/moneytogether
+            echo "${{ secrets.ENV_FILE }}" > .env
+            echo "${{ secrets.FIREBASE_KEY }}" > firebase-service-key.json
+
+      # 7️⃣ 서버에서 Docker Compose 실행 (재시작)
+      - name: Restart services with Docker Compose
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.AWS_VM_HOST }}
+          username: ${{ secrets.AWS_VM_USER }}
+          key: ${{ secrets.AWS_SSH_KEY }}
+          script: |
+            cd /home/ubuntu/moneytogether
+            docker compose down
+            docker compose up -d --build
