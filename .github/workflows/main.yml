@@ -27,11 +27,21 @@ jobs:
       - name: Build with Gradle
         run: ./gradlew clean bootJar -x test
 
-      # 4️⃣ JAR 이름 고정
-      - name: Rename JAR
-        run: mv build/libs/*.jar build/libs/app.jar
+      # 4️⃣ 빌드 결과 확인
+      - name: List build/libs
+        run: ls -l build/libs
 
-      # 5️⃣ EC2에 배포 파일 전송 (JAR + docker-compose.yml)
+      # 5️⃣ JAR 이름 고정
+      - name: Rename JAR
+        run: |
+          if ls build/libs/*.jar 1> /dev/null 2>&1; then
+            mv build/libs/*.jar build/libs/app.jar
+          else
+            echo "No JAR found in build/libs!"
+            exit 1
+          fi
+
+      # 6️⃣ EC2에 배포 파일 전송 (JAR + docker-compose.yml)
       - name: Copy files to AWS VM
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -43,7 +53,7 @@ jobs:
             docker-compose.yml
           target: /home/ubuntu/moneytogether/
 
-      # 6️⃣ ENV 파일 & Firebase 키도 서버에 저장
+      # 7️⃣ ENV 파일 & Firebase 키도 서버에 저장
       - name: Upload ENV and Firebase key
         uses: appleboy/ssh-action@v0.1.10
         with:
@@ -55,7 +65,7 @@ jobs:
             echo "${{ secrets.ENV_FILE }}" > .env
             echo "${{ secrets.FIREBASE_KEY }}" > firebase-service-key.json
 
-      # 7️⃣ 서버에서 Docker Compose 실행 (재시작)
+      # 8️⃣ 서버에서 Docker Compose 실행 (재시작)
       - name: Restart services with Docker Compose
         uses: appleboy/ssh-action@v0.1.10
         with:
