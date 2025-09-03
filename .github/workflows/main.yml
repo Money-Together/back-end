@@ -34,9 +34,14 @@ jobs:
       # 5️⃣ JAR 이름 고정
       - name: Rename JAR
         run: |
-          mv build/libs/moneytogether1-0.0.1-SNAPSHOT.jar build/libs/app.jar
+          if [ -f build/libs/moneytogether1-0.0.1-SNAPSHOT.jar ]; then
+            mv build/libs/moneytogether1-0.0.1-SNAPSHOT.jar build/libs/app.jar
+          else
+            echo "No JAR found!"
+            exit 1
+          fi
 
-      # 6️⃣ EC2에 배포 파일 전송 (JAR + docker-compose.yml)
+      # 6️⃣ EC2에 JAR + docker-compose.yml 전송
       - name: Copy files to AWS VM
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -48,7 +53,7 @@ jobs:
             docker-compose.yml
           target: /home/ubuntu/moneytogether/
 
-      # 7️⃣ ENV 파일 & Firebase 키도 서버에 저장
+      # 7️⃣ ENV 파일 & Firebase 키 서버에 저장
       - name: Upload ENV and Firebase key
         uses: appleboy/ssh-action@v0.1.10
         with:
@@ -60,7 +65,7 @@ jobs:
             echo "${{ secrets.ENV_FILE }}" > .env
             echo "${{ secrets.FIREBASE_KEY }}" > firebase-service-key.json
 
-      # 8️⃣ 서버에서 Docker Compose 실행 (재시작)
+      # 8️⃣ Docker Compose 재시작
       - name: Restart services with Docker Compose
         uses: appleboy/ssh-action@v0.1.10
         with:
