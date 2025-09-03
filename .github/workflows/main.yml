@@ -10,32 +10,33 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1️⃣ 코드 체크아웃
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      # 2️⃣ JDK 설치
       - name: Set up JDK
         uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
 
+      # 3️⃣ Gradle 빌드
       - name: Build with Gradle
         run: ./gradlew clean bootJar -x test
 
+      # 4️⃣ 빌드 결과 확인
       - name: List build/libs
         run: ls -l build/libs
 
+      # 5️⃣ JAR 이름 고정
       - name: Rename JAR
         run: |
-          if ls build/libs/*.jar 1> /dev/null 2>&1; then
-            mv build/libs/*.jar build/libs/app.jar
-          else
-            echo "No JAR found in build/libs!"
-            exit 1
-          fi
+          mv build/libs/moneytogether1-0.0.1-SNAPSHOT.jar build/libs/app.jar
 
+      # 6️⃣ EC2에 배포 파일 전송 (JAR + docker-compose.yml)
       - name: Copy files to AWS VM
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -47,6 +48,7 @@ jobs:
             docker-compose.yml
           target: /home/ubuntu/moneytogether/
 
+      # 7️⃣ ENV 파일 & Firebase 키도 서버에 저장
       - name: Upload ENV and Firebase key
         uses: appleboy/ssh-action@v0.1.10
         with:
@@ -55,13 +57,10 @@ jobs:
           key: ${{ secrets.AWS_SSH_KEY }}
           script: |
             cd /home/ubuntu/moneytogether
-            # 기존 파일 백업
-            [ -f .env ] && mv .env .env.bak
-            [ -f firebase-service-key.json ] && mv firebase-service-key.json firebase-service-key.json.bak
-            # 새로운 파일 생성
             echo "${{ secrets.ENV_FILE }}" > .env
             echo "${{ secrets.FIREBASE_KEY }}" > firebase-service-key.json
 
+      # 8️⃣ 서버에서 Docker Compose 실행 (재시작)
       - name: Restart services with Docker Compose
         uses: appleboy/ssh-action@v0.1.10
         with:
@@ -70,6 +69,5 @@ jobs:
           key: ${{ secrets.AWS_SSH_KEY }}
           script: |
             cd /home/ubuntu/moneytogether
-            docker compose down || true
+            docker compose down
             docker compose up -d --build
-            docker compose ps
