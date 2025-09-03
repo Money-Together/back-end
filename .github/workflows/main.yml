@@ -31,9 +31,9 @@ jobs:
       - name: List build/libs
         run: ls -l build/libs
 
-      # 5️⃣ JAR 파일 및 docker-compose.yml 복사
+      # 5️⃣ JAR 파일 및 docker-compose.yml 복사 (덮어쓰기 포함)
       - name: Copy JAR and docker-compose.yml to AWS VM
-        uses: appleboy/scp-action@v0.1.9
+        uses: appleboy/scp-action@v0.1.10
         with:
           host: ${{ secrets.AWS_VM_HOST }}
           username: ${{ secrets.AWS_VM_USER }}
@@ -42,8 +42,9 @@ jobs:
             build/libs/moneytogether1-0.0.1-SNAPSHOT.jar
             docker-compose.yml
           target: /home/ubuntu/moneytogether/
+          overwrite: true
 
-      # 6️⃣ ENV 파일 & Firebase 키 서버에 저장
+      # 6️⃣ ENV 파일 & Firebase 키 서버에 저장 (멀티라인 안전 처리)
       - name: Upload ENV and Firebase key
         uses: appleboy/ssh-action@v0.1.10
         with:
@@ -52,10 +53,10 @@ jobs:
           key: ${{ secrets.AWS_SSH_KEY }}
           script: |
             cd /home/ubuntu/moneytogether
-            echo "${{ secrets.ENV_FILE }}" > .env
-            echo "${{ secrets.FIREBASE_KEY }}" > firebase-service-key.json
+            printf "%s\n" "${{ secrets.ENV_FILE }}" > .env
+            printf "%s\n" "${{ secrets.FIREBASE_KEY }}" > firebase-service-key.json
 
-      # 7️⃣ Docker Compose 실행 (재시작)
+      # 7️⃣ Docker Compose 실행 (재시작 및 빌드)
       - name: Restart services with Docker Compose
         uses: appleboy/ssh-action@v0.1.10
         with:
