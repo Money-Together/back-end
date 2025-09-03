@@ -8,6 +8,7 @@ import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.IOException;
 
@@ -17,7 +18,12 @@ public class FirebaseConfig {
 
     @PostConstruct
     public void initialize() {
-        try (InputStream serviceAccount = new ClassPathResource("firebase/firebase-service-key.json").getInputStream()) {
+//        try (InputStream serviceAccount = new ClassPathResource("firebase/firebase-service-key.json").getInputStream()) {
+//            FirebaseOptions options = FirebaseOptions.builder()
+//                    .setCredentials(GoogleCredentials.fromStream(serviceAccount))
+//                    .build();
+        try (InputStream serviceAccount = new FileInputStream(
+                System.getProperty("firebase.config.path", "/home/ubuntu/moneytogether/firebase/firebase-service-key.json"))) {
             FirebaseOptions options = FirebaseOptions.builder()
                     .setCredentials(GoogleCredentials.fromStream(serviceAccount))
                     .build();
