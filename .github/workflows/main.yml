@@ -1,4 +1,4 @@
-name: Deploy MoneyTogether to AWS VM
+name: Deploy MoneyTogether to VM
 
 on:
   push:
@@ -34,39 +34,39 @@ jobs:
           mv build/libs/moneytogether1-0.0.1-SNAPSHOT.jar build/libs/moneytogether1-$COMMIT_SHA.jar
           echo "NEW_JAR=moneytogether1-$COMMIT_SHA.jar" >> $GITHUB_ENV
 
-      # 5️⃣ AWS VM으로 JAR 복사
-      - name: Copy JAR to AWS VM
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.AWS_VM_HOST }}
-          username: ${{ secrets.AWS_VM_USER }}
-          key: ${{ secrets.AWS_SSH_KEY }}
-          source: "build/libs/${{ env.NEW_JAR }}"
-          target: "/home/ubuntu/moneytogether/"
-          strip_components: 2
-
-      # 6️⃣ AWS VM에서 기존 애플리케이션 종료 후 새 JAR 실행
-      - name: Restart MoneyTogether on AWS VM
+      # 5️⃣ VM에서 DB 컨테이너 먼저 띄우기
+      - name: Start DB container on VM
         uses: appleboy/ssh-action@v0.1.10
         with:
-          host: ${{ secrets.AWS_VM_HOST }}
-          username: ${{ secrets.AWS_VM_USER }}
-          key: ${{ secrets.AWS_SSH_KEY }}
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          script: |
+            cd /home/${{ secrets.VM_USER }}/moneytogether
+            docker compose up -d db
+
+      # 6️⃣ JAR 파일 VM으로 복사
+      - name: Copy JAR to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          source: "build/libs/${{ env.NEW_JAR }}"
+          target: "/home/${{ secrets.VM_USER }}/moneytogether/"
+          strip_components: 2
+
+      # 7️⃣ 기존 애플리케이션 종료 후 새 JAR 실행
+      - name: Restart application on VM
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
           script: |
             PID=$(ps aux | grep 'moneytogether1-.*\.jar' | grep -v grep | awk '{print $2}')
             if [ -n "$PID" ]; then
               kill -9 $PID
             fi
-            cd /home/ubuntu/moneytogether
+            cd /home/${{ secrets.VM_USER }}/moneytogether
             nohup java -jar ${{ env.NEW_JAR }} > moneytogether.log 2>&1 &
-
-      # 7️⃣ AWS VM에서 Docker Compose로 DB만 실행
-      - name: Start DB with Docker Compose
-        uses: appleboy/ssh-action@v0.1.10
-        with:
-          host: ${{ secrets.AWS_VM_HOST }}
-          username: ${{ secrets.AWS_VM_USER }}
-          key: ${{ secrets.AWS_SSH_KEY }}
-          script: |
-            cd /home/ubuntu/moneytogether
-            docker compose up -d db
