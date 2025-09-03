@@ -43,3 +43,7 @@ Thumbs.db
 
 ### 클래스 파일 ###
 **/*.class
+
+/build/
+/*.jar
+
