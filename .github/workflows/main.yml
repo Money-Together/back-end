@@ -1,4 +1,4 @@
-name: Deploy to AWS
+name: Deploy to AWS VM
 
 on:
   push:
@@ -8,42 +8,68 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
 
-      - name: Setup Java
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK
         uses: actions/setup-java@v4
         with:
-          distribution: temurin
-          java-version: 21
+          java-version: '21'
+          distribution: 'temurin'
 
-      - name: Build JAR
+      - name: Build with Gradle
         run: ./gradlew clean bootJar -x test
 
-      - name: Copy and deploy via SSH
+      - name: List build/libs
+        run: ls -l build/libs
+
+      - name: Rename JAR
+        run: |
+          if ls build/libs/*.jar 1> /dev/null 2>&1; then
+            mv build/libs/*.jar build/libs/app.jar
+          else
+            echo "No JAR found in build/libs!"
+            exit 1
+          fi
+
+      - name: Copy files to AWS VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.AWS_VM_HOST }}
+          username: ${{ secrets.AWS_VM_USER }}
+          key: ${{ secrets.AWS_SSH_KEY }}
+          source: |
+            build/libs/app.jar
+            docker-compose.yml
+          target: /home/ubuntu/moneytogether/
+
+      - name: Upload ENV and Firebase key
         uses: appleboy/ssh-action@v0.1.10
         with:
           host: ${{ secrets.AWS_VM_HOST }}
           username: ${{ secrets.AWS_VM_USER }}
           key: ${{ secrets.AWS_SSH_KEY }}
-          port: 22
           script: |
-            set -e
-            cd /home/${{ secrets.AWS_VM_USER }}/moneytogether/
+            cd /home/ubuntu/moneytogether
+            # 기존 파일 백업
+            [ -f .env ] && mv .env .env.bak
+            [ -f firebase-service-key.json ] && mv firebase-service-key.json firebase-service-key.json.bak
+            # 새로운 파일 생성
+            echo "${{ secrets.ENV_FILE }}" > .env
+            echo "${{ secrets.FIREBASE_KEY }}" > firebase-service-key.json
 
-            # Docker 컨테이너 중지 (실패해도 무시)
+      - name: Restart services with Docker Compose
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.AWS_VM_HOST }}
+          username: ${{ secrets.AWS_VM_USER }}
+          key: ${{ secrets.AWS_SSH_KEY }}
+          script: |
+            cd /home/ubuntu/moneytogether
             docker compose down || true
-
-            # .env 파일 생성
-            if [ ! -f .env ]; then
-              echo "${{ secrets.ENV_FILE }}" > .env
-              echo ".env 파일 생성 완료"
-            fi
-
-            # Firebase 서비스 키 생성
-            mkdir -p /home/${{ secrets.AWS_VM_USER }}/moneytogether/app/firebase
-            echo "${{ secrets.FIREBASE_KEY }}" > /home/${{ secrets.AWS_VM_USER }}/moneytogether/app/firebase/firebase-service-key.json
-
-            # Docker Compose 실행
-            docker compose up -d
+            docker compose up -d --build
+            docker compose ps
