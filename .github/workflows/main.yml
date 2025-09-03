@@ -1,4 +1,4 @@
-name: Deploy to AWS VM
+name: Deploy MoneyTogether to AWS VM
 
 on:
   push:
@@ -25,28 +25,43 @@ jobs:
 
       # 3️⃣ Gradle 빌드
       - name: Build with Gradle
-        run: ./gradlew clean bootJar -x test
+        run: ./gradlew clean build -x test
 
-      # 4️⃣ 빌드 결과 확인
-      - name: List build files
-        run: ls -l build/libs docker-compose.yml
+      # 4️⃣ JAR 이름에 커밋 SHA 포함
+      - name: Rename JAR with commit SHA
+        run: |
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+          mv build/libs/moneytogether1-0.0.1-SNAPSHOT.jar build/libs/moneytogether1-$COMMIT_SHA.jar
+          echo "NEW_JAR=moneytogether1-$COMMIT_SHA.jar" >> $GITHUB_ENV
 
-      # 5️⃣ JAR 파일 및 docker-compose.yml 복사
-      - name: Copy files to AWS VM
+      # 5️⃣ AWS VM으로 JAR 복사
+      - name: Copy JAR to AWS VM
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.AWS_VM_HOST }}
           username: ${{ secrets.AWS_VM_USER }}
           key: ${{ secrets.AWS_SSH_KEY }}
-          port: 22
-          source: |
-            build/libs/moneytogether1-0.0.1-SNAPSHOT.jar
-            docker-compose.yml
-          target: /home/ubuntu/moneytogether/
+          source: "build/libs/${{ env.NEW_JAR }}"
+          target: "/home/ubuntu/moneytogether/"
+          strip_components: 2
 
+      # 6️⃣ AWS VM에서 기존 애플리케이션 종료 후 새 JAR 실행
+      - name: Restart MoneyTogether on AWS VM
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.AWS_VM_HOST }}
+          username: ${{ secrets.AWS_VM_USER }}
+          key: ${{ secrets.AWS_SSH_KEY }}
+          script: |
+            PID=$(ps aux | grep 'moneytogether1-.*\.jar' | grep -v grep | awk '{print $2}')
+            if [ -n "$PID" ]; then
+              kill -9 $PID
+            fi
+            cd /home/ubuntu/moneytogether
+            nohup java -jar ${{ env.NEW_JAR }} > moneytogether.log 2>&1 &
 
-      # 6️⃣ ENV 파일 & Firebase 키 서버에 저장
-      - name: Upload ENV and Firebase key
+      # 7️⃣ AWS VM에서 Docker Compose로 DB만 실행
+      - name: Start DB with Docker Compose
         uses: appleboy/ssh-action@v0.1.10
         with:
           host: ${{ secrets.AWS_VM_HOST }}
@@ -54,17 +69,4 @@ jobs:
           key: ${{ secrets.AWS_SSH_KEY }}
           script: |
             cd /home/ubuntu/moneytogether
-            echo "${{ secrets.ENV_FILE }}" > .env
-            echo "${{ secrets.FIREBASE_KEY }}" > firebase-service-key.json
-
-      # 7️⃣ Docker Compose 실행 (재시작)
-      - name: Restart services with Docker Compose
-        uses: appleboy/ssh-action@v0.1.10
-        with:
-          host: ${{ secrets.AWS_VM_HOST }}
-          username: ${{ secrets.AWS_VM_USER }}
-          key: ${{ secrets.AWS_SSH_KEY }}
-          script: |
-            cd /home/ubuntu/moneytogether
-            docker compose down
-            docker compose up -d --build
+            docker-compose up -d db
