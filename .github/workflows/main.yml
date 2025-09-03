@@ -69,4 +69,4 @@ jobs:
           key: ${{ secrets.AWS_SSH_KEY }}
           script: |
             cd /home/ubuntu/moneytogether
-            docker-compose up -d db
+            docker compose up -d db
