@@ -1,0 +1,45 @@
+### 빌드 결과물 ###
+/build/classes/
+/build/generated/
+/build/reports/
+/build/resources/
+/build/tmp/
+/build/resolvedMainClassName
+/out/
+.gradle/
+
+### IDE 설정 파일 ###
+.idea/
+*.iws
+*.iml
+*.ipr
+.classpath
+.project
+.settings/
+.sts4-cache
+.apt_generated
+.factorypath
+.springBeans
+
+
+### VS Code ###
+.vscode/
+
+### OS 불필요 파일 ###
+.DS_Store
+Thumbs.db
+
+### 로그 파일 ###
+*.log
+
+### 민감정보 파일 ###
+/src/main/resources/firebase/firebase-service-key.json
+.env
+.env.*
+
+### 임시 파일 ###
+*.tmp
+*.temp
+
+### 클래스 파일 ###
+**/*.class
