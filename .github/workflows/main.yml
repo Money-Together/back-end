@@ -29,8 +29,7 @@ jobs:
           key: ${{ secrets.AWS_SSH_KEY }}
           port: 22
           script: |
-            set -e  # 오류 발생 시 즉시 중단
-
+            set -e
             cd /home/${{ secrets.AWS_VM_USER }}/moneytogether/
 
             # Docker 컨테이너 중지 (실패해도 무시)
@@ -45,12 +44,6 @@ jobs:
             # Firebase 서비스 키 생성
             mkdir -p /home/${{ secrets.AWS_VM_USER }}/moneytogether/app/firebase
             echo "${{ secrets.FIREBASE_KEY }}" > /home/${{ secrets.AWS_VM_USER }}/moneytogether/app/firebase/firebase-service-key.json
-
-            # Dockerfile 존재 여부 확인
-            if [ ! -f Dockerfile ]; then
-              echo "Dockerfile이 존재하지 않습니다! 배포를 중단합니다."
-              exit 1
-            fi
 
             # Docker Compose 빌드 및 실행
             docker compose up -d --build
