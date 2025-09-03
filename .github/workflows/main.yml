@@ -33,7 +33,7 @@ jobs:
 
       # 5️⃣ JAR 파일 및 docker-compose.yml 복사
       - name: Copy JAR and docker-compose.yml to AWS VM
-        uses: appleboy/scp-action@v0.1.10
+        uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.AWS_VM_HOST }}
           username: ${{ secrets.AWS_VM_USER }}
@@ -46,7 +46,7 @@ jobs:
 
       # 6️⃣ ENV 파일 & Firebase 키 서버에 저장
       - name: Upload ENV and Firebase key
-        uses: appleboy/ssh-action@v0.1.7
+        uses: appleboy/ssh-action@v0.1.10
         with:
           host: ${{ secrets.AWS_VM_HOST }}
           username: ${{ secrets.AWS_VM_USER }}
