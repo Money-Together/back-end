@@ -15,7 +15,7 @@ services:
       - db_data:/var/lib/mysql
 
   app:
-    build: .
+    image: openjdk:21
     restart: always
     env_file:
       - .env
@@ -24,10 +24,10 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./build/libs:/app/build/libs
-      - ./firebase-service-key.json:/app/firebase/firebase-service-key.json:ro
-    working_dir: /app/build/libs
-    command: java -jar app.jar
+      - ./build/libs:/app
+      - ./app/firebase-service-key.json:/app/firebase/firebase-service-key.json:ro
+    working_dir: /app
+    command: java -jar moneytogether1-0.0.1-SNAPSHOT.jar
 
 volumes:
   db_data:

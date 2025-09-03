@@ -31,20 +31,19 @@ jobs:
           script: |
             set -e
             cd /home/${{ secrets.AWS_VM_USER }}/moneytogether/
-      
+
             # Docker 컨테이너 중지 (실패해도 무시)
             docker compose down || true
-      
+
             # .env 파일 생성
             if [ ! -f .env ]; then
               echo "${{ secrets.ENV_FILE }}" > .env
               echo ".env 파일 생성 완료"
             fi
-      
+
             # Firebase 서비스 키 생성
-            mkdir -p ./app/firebase
-            echo "${{ secrets.FIREBASE_KEY }}" > ./app/firebase/firebase-service-key.json
-      
-            # Docker Compose로 컨테이너 빌드 및 실행
-            docker compose pull  # 최신 이미지 가져오기
+            mkdir -p /home/${{ secrets.AWS_VM_USER }}/moneytogether/app/firebase
+            echo "${{ secrets.FIREBASE_KEY }}" > /home/${{ secrets.AWS_VM_USER }}/moneytogether/app/firebase/firebase-service-key.json
+
+            # Docker Compose 실행
             docker compose up -d
