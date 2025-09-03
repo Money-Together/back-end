@@ -1,4 +1,7 @@
 spring:
+  config:
+    import: optional:file:.env[.properties]
+
   datasource:
     url: jdbc:mysql://localhost:3306/moneytogether?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -15,8 +18,12 @@ spring:
     database-platform: org.hibernate.dialect.MySQL8Dialect
 
 firebase:
+  config-path: /app/firebase/firebase-service-key.json
   credentials:
-    path: classpath:firebase/firebase-service-key.json
+    path: /app/firebase/firebase-service-key.json
+
+#  credentials:
+#    path: classpath:firebase/firebase-service-key.json
 
 jwt:
   secret: ${JWT_SECRET}

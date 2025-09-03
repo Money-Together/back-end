@@ -24,7 +24,12 @@ services:
     ports:
       - "8080:8080"
     volumes:
+      # 빌드된 JAR 파일 공유
       - ./build/libs:/app/build/libs
+      # Firebase 키 공유
+      - ./firebase-service-key.json:/app/firebase/firebase-service-key.json:ro
+      # .env 파일 공유 (Spring이 직접 읽을 수 있도록)
+      - ./.env:/app/.env:ro
 
 volumes:
   db_data:
