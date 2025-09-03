@@ -46,7 +46,7 @@ jobs:
 
       # 6️⃣ ENV 파일 & Firebase 키 서버에 저장
       - name: Upload ENV and Firebase key
-        uses: appleboy/ssh-action@v0.1.10
+        uses: appleboy/ssh-action@v0.1.7
         with:
           host: ${{ secrets.AWS_VM_HOST }}
           username: ${{ secrets.AWS_VM_USER }}
