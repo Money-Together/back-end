@@ -1,4 +1,4 @@
-name: Deploy to AWS VM
+name: Build and Deploy
 
 on:
   push:
@@ -6,69 +6,40 @@ on:
       - main
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ 코드 체크아웃
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
-      # 2️⃣ JDK 설치
-      - name: Set up JDK
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
+    - name: Set up JDK
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: 21
 
-      # 3️⃣ Gradle 빌드
-      - name: Build with Gradle
-        run: ./gradlew clean bootJar -x test
+    - name: Build with Gradle
+      run: ./gradlew clean bootJar -x test
 
-      # 4️⃣ JAR 이름 고정
-      - name: Rename JAR
-        run: |
-          if [ -f build/libs/moneytogether1-0.0.1-SNAPSHOT.jar ]; then
-            mv build/libs/moneytogether1-0.0.1-SNAPSHOT.jar build/libs/app.jar
-          else
-            echo "빌드된 JAR 파일을 찾을 수 없습니다!"
-            exit 1
-          fi
+    - name: Copy files to AWS VM
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.AWS_VM_HOST }}
+        username: ${{ secrets.AWS_VM_USER }}
+        key: ${{ secrets.AWS_SSH_KEY }}
+        port: 22
+        source: build/libs/moneytogether1-0.0.1-SNAPSHOT.jar,docker-compose.yml
+        target: /home/ubuntu/moneytogether/
 
-      # 5️⃣ EC2에 JAR과 docker-compose.yml 전송
-      - name: Copy files to AWS VM
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.AWS_VM_HOST }}
-          username: ${{ secrets.AWS_VM_USER }}
-          key: ${{ secrets.AWS_SSH_KEY }}
-          source: |
-            build/libs/app.jar
-            docker-compose.yml
-          target: /home/ubuntu/moneytogether/
-
-      # 6️⃣ ENV 파일 및 Firebase 키 서버에 생성
-      - name: Upload ENV and Firebase key
-        uses: appleboy/ssh-action@v0.1.10
-        with:
-          host: ${{ secrets.AWS_VM_HOST }}
-          username: ${{ secrets.AWS_VM_USER }}
-          key: ${{ secrets.AWS_SSH_KEY }}
-          script: |
-            cd /home/ubuntu/moneytogether
-            echo "${{ secrets.ENV_FILE }}" > .env
-            echo '${{ secrets.FIREBASE_KEY }}' > firebase-service-key.json
-
-      # 7️⃣ Docker Compose로 앱 재시작
-      - name: Restart services with Docker Compose
-        uses: appleboy/ssh-action@v0.1.10
-        with:
-          host: ${{ secrets.AWS_VM_HOST }}
-          username: ${{ secrets.AWS_VM_USER }}
-          key: ${{ secrets.AWS_SSH_KEY }}
-          script: |
-            cd /home/ubuntu/moneytogether
-            docker compose down
-            docker compose up -d --build
+    - name: Run commands on AWS VM
+      uses: appleboy/ssh-action@v0.1.10
+      with:
+        host: ${{ secrets.AWS_VM_HOST }}
+        username: ${{ secrets.AWS_VM_USER }}
+        key: ${{ secrets.AWS_SSH_KEY }}
+        port: 22
+        script: |
+          cd /home/ubuntu/moneytogether/
+          docker-compose down
+          docker-compose up -d --build
