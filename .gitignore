@@ -47,3 +47,4 @@ Thumbs.db
 /build/
 /*.jar
 
+/src/main/java/com/example/moneytogether1/config/FirebaseConfig.java

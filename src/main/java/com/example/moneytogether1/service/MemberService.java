@@ -5,6 +5,7 @@ import com.example.moneytogether1.dto.WalletDto;
 import com.example.moneytogether1.dto.request.MemberUpdateRequest;
 import com.example.moneytogether1.dto.request.WalletCreateRequest;
 import com.example.moneytogether1.dto.request.WalletUpdateRequest;
+import com.example.moneytogether1.dto.response.MemberResponseDto;
 import com.example.moneytogether1.entity.Member;
 import com.example.moneytogether1.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
@@ -20,14 +21,10 @@ public class MemberService {
     private final MemberRepository memberRepository;
     private final ImageService imageService; // 이미지 처리 전담
 
-    public MemberDto getMember(Long memberId) {
-        Member member = getActiveMember(memberId);
+    public MemberResponseDto getMember(Long memberId) {
+        Member member = getActiveMember(memberId); // 활성 회원 조회
 
-        return MemberDto.builder()
-                .nickname(member.getNickname())
-                .email(member.getEmail())
-                .image(member.getImage())
-                .build();
+        return MemberResponseDto.from(member); // 프론트용 DTO 변환
     }
 
     public void saveProfileImageFromGoogle(Long memberId, String googleImageUrl) {

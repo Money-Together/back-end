@@ -5,13 +5,20 @@ import com.example.moneytogether1.dto.WalletDto;
 import com.example.moneytogether1.dto.request.MemberUpdateRequest;
 import com.example.moneytogether1.dto.request.WalletCreateRequest;
 import com.example.moneytogether1.dto.request.WalletUpdateRequest;
+import com.example.moneytogether1.dto.response.MemberResponseDto;
+import com.example.moneytogether1.entity.Member;
+import com.example.moneytogether1.service.ImageService;
 import com.example.moneytogether1.service.MemberService;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/member")
@@ -21,15 +28,13 @@ public class MemberController {
     private final MemberService memberService;
 
     @GetMapping("/profile")
-    public ResponseEntity<?> getMyInfo(Authentication authentication) {
-        try {
-            Long memberId = (Long) authentication.getPrincipal();
-            MemberDto memberInfo = memberService.getMember(memberId);
-            return ResponseEntity.ok(memberInfo);
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body("내 정보 조회 중 오류가 발생했습니다.");
-        }
+    public ResponseEntity<MemberResponseDto> getMyInfo(Authentication authentication) {
+        Long memberId = (Long) authentication.getPrincipal();
+        MemberResponseDto response = memberService.getMember(memberId);
+        return ResponseEntity.ok(response);
     }
+
+
 
     /**
      * 프로필 수정 (이미지 파일 포함)
